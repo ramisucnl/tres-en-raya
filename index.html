@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tres en Raya con IA</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #121926;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    h1 {
+      color: #00e1ff;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      grid-gap: 5px;
+      margin: 20px 0;
+    }
+
+    .cell {
+      width: 100px;
+      height: 100px;
+      background: #2d334a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 2.5rem;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .cell:hover {
+      background: #3c425d;
+    }
+
+    /* Animación al colocar ficha */
+    .cell.played {
+      animation: pop 0.3s ease;
+    }
+
+    @keyframes pop {
+      0% {
+        transform: scale(0.3);
+        opacity: 0;
+      }
+      60% {
+        transform: scale(1.2);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    /* ❌ estilo - ROJO */
+    .cell.x {
+      color: #ff4444;
+      text-shadow: 0 0 10px #ff4444, 0 0 20px #ff4444, 0 0 30px #ff4444;
+    }
+
+    /* ⭕ estilo - AZUL */
+    .cell.o {
+      color: #4488ff;
+      text-shadow: 0 0 10px #4488ff, 0 0 20px #4488ff, 0 0 30px #4488ff;
+    }
+
+    .controls {
+      margin-bottom: 10px;
+    }
+
+    select, button {
+      padding: 10px;
+      border-radius: 5px;
+      border: none;
+      font-size: 1rem;
+      margin: 5px;
+      background: #2d334a;
+      color: #fff;
+      cursor: pointer;
+      min-width: 120px;
+    }
+
+    select:hover, button:hover {
+      background: #3c425d;
+    }
+
+    .status {
+      margin-bottom: 10px;
+      font-size: 1.2rem;
+    }
+
+    /* Colores en el texto de estado */
+    .status .red-x {
+      color: #ff4444;
+      text-shadow: 0 0 5px #ff4444;
+    }
+
+    .status .blue-o {
+      color: #4488ff;
+      text-shadow: 0 0 5px #4488ff;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎮 Tres en Raya (Gato)</h1>
+
+  <div class="controls">
+    <label>Modo:
+      <select id="mode">
+        <option value="human">2 Jugadores</option>
+        <option value="easy">CPU Fácil</option>
+        <option value="medium">CPU Medio</option>
+        <option value="hard">CPU Difícil</option>
+      </select>
+    </label>
+    <label>¿Quién inicia?:
+      <select id="firstPlayer">
+        <option value="human">Jugador (❌)</option>
+        <option value="cpu">CPU (⭕)</option>
+        <option value="random">Aleatorio</option>
+      </select>
+    </label>
+    <button onclick="resetGame()">Reiniciar</button>
+  </div>
+
+  <div class="status" id="status">Turno de: <span class="red-x">❌</span></div>
+  <div class="board" id="board"></div>
+
+  <script>
+    const board = document.getElementById("board");
+    const statusText = document.getElementById("status");
+    const modeSelect = document.getElementById("mode");
+    const firstPlayerSelect = document.getElementById("firstPlayer");
+
+    let cells = Array(9).fill("");
+    let currentPlayer = "❌";
+    let gameActive = true;
+
+    const winPatterns = [
+      [0,1,2],[3,4,5],[6,7,8],
+      [0,3,6],[1,4,7],[2,5,8],
+      [0,4,8],[2,4,6]
+    ];
+
+    function createBoard() {
+      board.innerHTML = "";
+      cells.forEach((_, i) => {
+        const cell = document.createElement("div");
+        cell.classList.add("cell");
+        cell.dataset.index = i;
+        cell.addEventListener("click", handleCellClick);
+        board.appendChild(cell);
+      });
+    }
+
+    function handleCellClick(e) {
+      const index = e.target.dataset.index;
+      if (cells[index] !== "" || !gameActive) return;
+
+      makeMove(index, currentPlayer);
+
+      if (!gameActive) return;
+
+      const mode = modeSelect.value;
+      if (mode !== "human" && currentPlayer === "⭕") {
+        setTimeout(cpuMove, 300);
+      }
+    }
+
+    function makeMove(index, player) {
+      cells[index] = player;
+      const cell = board.children[index];
+      cell.textContent = player;
+      cell.classList.add("played");
+      cell.classList.add(player === "❌" ? "x" : "o");
+
+      if (checkWinner(player)) {
+        const playerClass = player === "❌" ? "red-x" : "blue-o";
+        statusText.innerHTML = `Ganó: <span class="${playerClass}">${player}</span> 🎉`;
+        gameActive = false;
+      } else if (!cells.includes("")) {
+        statusText.textContent = "¡Empate! 🤝";
+        gameActive = false;
+      } else {
+        currentPlayer = currentPlayer === "❌" ? "⭕" : "❌";
+        const playerClass = currentPlayer === "❌" ? "red-x" : "blue-o";
+        statusText.innerHTML = `Turno de: <span class="${playerClass}">${currentPlayer}</span>`;
+      }
+    }
+
+    function checkWinner(player) {
+      return winPatterns.some(pattern =>
+        pattern.every(i => cells[i] === player)
+      );
+    }
+
+    function resetGame() {
+      cells = Array(9).fill("");
+      gameActive = true;
+      
+      // Determinar quién inicia según la configuración
+      const firstPlayerOption = firstPlayerSelect.value;
+      const mode = modeSelect.value;
+      
+      if (mode === "human") {
+        // En modo 2 jugadores, siempre inicia X
+        currentPlayer = "❌";
+      } else {
+        // En modos CPU, aplicar la configuración
+        if (firstPlayerOption === "human") {
+          currentPlayer = "❌";
+        } else if (firstPlayerOption === "cpu") {
+          currentPlayer = "⭕";
+        } else if (firstPlayerOption === "random") {
+          currentPlayer = Math.random() < 0.5 ? "❌" : "⭕";
+        }
+      }
+      
+      const playerClass = currentPlayer === "❌" ? "red-x" : "blue-o";
+      statusText.innerHTML = `Turno de: <span class="${playerClass}">${currentPlayer}</span>`;
+      createBoard();
+      
+      // Si la CPU debe iniciar, hacer su movimiento
+      if (mode !== "human" && currentPlayer === "⭕") {
+        setTimeout(cpuMove, 500);
+      }
+    }
+
+    function cpuMove() {
+      let index;
+      const difficulty = modeSelect.value;
+
+      if (difficulty === "easy") {
+        index = randomMove();
+      } else if (difficulty === "medium") {
+        index = findBestMove("⭕", false) || randomMove();
+      } else if (difficulty === "hard") {
+        index = minimax(cells, "⭕").index;
+      }
+
+      if (index !== undefined && cells[index] === "") {
+        makeMove(index, "⭕");
+      }
+    }
+
+    function randomMove() {
+      const empty = cells.map((v, i) => v === "" ? i : null).filter(v => v !== null);
+      return empty[Math.floor(Math.random() * empty.length)];
+    }
+
+    function findBestMove(player, winOnly) {
+      for (let i = 0; i < 9; i++) {
+        if (cells[i] === "") {
+          cells[i] = player;
+          if (checkWinner(player)) {
+            cells[i] = "";
+            return i;
+          }
+          cells[i] = "";
+        }
+      }
+      return winOnly ? null : randomMove();
+    }
+
+    function minimax(newBoard, player) {
+      const huPlayer = "❌";
+      const aiPlayer = "⭕";
+      const availSpots = newBoard.map((v, i) => v === "" ? i : null).filter(v => v !== null);
+
+      if (checkWin(newBoard, huPlayer)) return { score: -10 };
+      if (checkWin(newBoard, aiPlayer)) return { score: 10 };
+      if (availSpots.length === 0) return { score: 0 };
+
+      const moves = [];
+
+      for (let i = 0; i < availSpots.length; i++) {
+        const move = {};
+        move.index = availSpots[i];
+        newBoard[availSpots[i]] = player;
+
+        const result = minimax(newBoard, player === aiPlayer ? huPlayer : aiPlayer);
+        move.score = result.score;
+
+        newBoard[availSpots[i]] = "";
+        moves.push(move);
+      }
+
+      let bestMove;
+      if (player === aiPlayer) {
+        let bestScore = -Infinity;
+        for (let i = 0; i < moves.length; i++) {
+          if (moves[i].score > bestScore) {
+            bestScore = moves[i].score;
+            bestMove = i;
+          }
+        }
+      } else {
+        let bestScore = Infinity;
+        for (let i = 0; i < moves.length; i++) {
+          if (moves[i].score < bestScore) {
+            bestScore = moves[i].score;
+            bestMove = i;
+          }
+        }
+      }
+      return moves[bestMove];
+    }
+
+    function checkWin(boardState, player) {
+      return winPatterns.some(pattern =>
+        pattern.every(i => boardState[i] === player)
+      );
+    }
+
+    createBoard();
+  </script>
+</body>
+</html>
